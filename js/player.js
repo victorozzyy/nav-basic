@@ -104,14 +104,12 @@ const PlayerModule = {
     
     // Define foco no botão especificado
     setButtonFocus(index) {
-        // Remove foco de todos os botões
         this.controlButtons.forEach(btn => {
             btn.style.border = '2px solid transparent';
             btn.style.background = btn.id === 'closeBtn' ? '#c00' : '#222';
             btn.style.transform = 'scale(1)';
         });
         
-        // Aplica foco no botão atual
         if (this.controlButtons[index]) {
             const btn = this.controlButtons[index];
             btn.style.border = '2px solid #00ff00';
@@ -134,10 +132,9 @@ const PlayerModule = {
         const controls = this.overlay.querySelector('#controls');
         const progressBar = this.overlay.querySelector('#progressBar');
         
-        // Armazena referência dos botões
         this.controlButtons = Array.from(controls.querySelectorAll('.player-control'));
         
-        // Botões
+        // Eventos dos botões
         this.overlay.querySelector('#playPauseBtn').onclick = () => this.togglePlayPause();
         this.overlay.querySelector('#prevBtn').onclick = () => this.switchChannel(-1);
         this.overlay.querySelector('#nextBtn').onclick = () => this.switchChannel(1);
@@ -157,7 +154,7 @@ const PlayerModule = {
             }
         });
         
-        // Atualização de progresso para player nativo
+        // Eventos do vídeo
         if (this.videoElement) {
             this.videoElement.addEventListener('timeupdate', () => {
                 if (this.useNativePlayer) {
@@ -181,7 +178,7 @@ const PlayerModule = {
             });
         }
         
-        // Mostrar controles ao mover mouse
+        // Mostrar controles
         this.overlay.addEventListener('mousemove', () => this.showControls());
         this.overlay.addEventListener('click', () => this.showControls());
         
@@ -194,7 +191,6 @@ const PlayerModule = {
                 this.close();
             } else if (e.key === ' ' || e.key === 'Enter') {
                 e.preventDefault();
-                // Executa ação do botão focado
                 if (this.controlButtons[this.currentButtonIndex]) {
                     this.controlButtons[this.currentButtonIndex].click();
                 } else {
@@ -240,13 +236,11 @@ const PlayerModule = {
         this.overlay.style.display = 'block';
         this.overlay.querySelector('#channelTitle').textContent = `📺 ${name}`;
         
-        // Define foco inicial no botão Play/Pause (índice 2)
         setTimeout(() => {
-            this.currentButtonIndex = 2; // Play/Pause é o 3º botão (índice 2)
+            this.currentButtonIndex = 2;
             this.setButtonFocus(this.currentButtonIndex);
         }, 300);
         
-        // Detectar tipo de player
         if (window.webapis && webapis.avplay) {
             console.log('🎮 Usando AVPlay (Samsung Tizen)');
             this.useNativePlayer = false;
@@ -263,7 +257,6 @@ const PlayerModule = {
     // Inicializa HLS.js ou HTML5 Video
     initHLSPlayer(url) {
         try {
-            // Limpar player anterior
             if (this.hls) {
                 this.hls.destroy();
                 this.hls = null;
@@ -273,7 +266,6 @@ const PlayerModule = {
             this.videoElement.src = '';
             
             if (url.includes('.m3u8')) {
-                // Usar HLS.js para streams
                 if (window.Hls && Hls.isSupported()) {
                     console.log('📺 Usando HLS.js');
                     this.hls = new Hls({
@@ -309,16 +301,14 @@ const PlayerModule = {
                         }
                     });
                 } else if (this.videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Safari nativo
                     console.log('🍎 Usando player nativo Safari');
                     this.videoElement.src = url;
                     this.play();
                 } else {
                     console.error('❌ HLS.js não suportado');
-                    alert('Seu navegador não suporta reprodução HLS. Use Chrome, Edge ou Safari.');
+                    alert('Seu navegador não suporta reprodução HLS.');
                 }
             } else {
-                // MP4 ou outros formatos
                 console.log('🎬 Usando HTML5 Video para MP4');
                 this.videoElement.src = url;
                 this.play();
@@ -431,7 +421,8 @@ const PlayerModule = {
         }
     },
     
-    close() {
+    // ✅ NOVO: Limpa o player sem restaurar foco (para switchChannel)
+    cleanupPlayer() {
         if (this.useNativePlayer) {
             if (this.hls) {
                 this.hls.destroy();
@@ -448,20 +439,67 @@ const PlayerModule = {
                 this.avplay.stop();
                 this.avplay.close();
             } catch (e) {
-                console.error('Erro ao fechar:', e);
+                console.error('Erro ao limpar player:', e);
             }
         }
+    },
+    
+    // ✅ CORRIGIDO: Fecha o player e restaura foco
+    close() {
+        this.cleanupPlayer();
         
         this.overlay.style.display = 'none';
         AppState.isPlaying = false;
         
-        // Retorna foco para lista de canais
-        if (typeof ChannelModule !== 'undefined') {
-            ChannelModule.focusLastChannel();
+        // Restaura foco na lista de canais
+        this.restoreFocusToChannelList();
+    },
+    
+    // ✅ NOVO: Restaura foco na lista de canais
+    restoreFocusToChannelList() {
+        try {
+            // Tenta usar ChannelModule se disponível
+            if (typeof ChannelModule !== 'undefined' && 
+                typeof ChannelModule.focusLastChannel === 'function') {
+                ChannelModule.focusLastChannel();
+                console.log('✅ Foco restaurado via ChannelModule');
+                return;
+            }
+            
+            // Tenta usar NavigationModule se disponível
+            if (typeof NavigationModule !== 'undefined' && 
+                typeof NavigationModule.focusItem === 'function') {
+                const lastIndex = AppState.currentChannelIndex || 0;
+                NavigationModule.focusItem(lastIndex);
+                console.log('✅ Foco restaurado via NavigationModule');
+                return;
+            }
+            
+            // Fallback: foco manual
+            const channelList = document.getElementById('channelList');
+            if (channelList) {
+                const lastIndex = AppState.currentChannelIndex || 0;
+                const channelItem = channelList.querySelector(`[data-index="${lastIndex}"]`) 
+                    || channelList.querySelector('.channel-item, .list-item');
+                
+                if (channelItem) {
+                    channelList.querySelectorAll('.focused').forEach(el => {
+                        el.classList.remove('focused');
+                    });
+                    
+                    channelItem.classList.add('focused');
+                    channelItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    channelItem.focus();
+                    
+                    console.log('✅ Foco restaurado manualmente no canal:', lastIndex);
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Não foi possível restaurar foco:', error);
         }
     },
     
-    // Troca de canal
+    // ✅ CORRIGIDO: Troca de canal sem chamar close()
     switchChannel(offset) {
         const playlist = AppState.currentPlaylist;
         if (!playlist.length) return;
@@ -474,11 +512,14 @@ const PlayerModule = {
         
         if (!nextChannel || !nextChannel.url) return;
         
-        this.close();
+        // Limpa o player atual SEM restaurar foco
+        this.cleanupPlayer();
+        
+        // Abre o próximo canal
         this.open(nextChannel.url, nextChannel.name, idx);
     },
     
-    // Atualiza barra de progresso (apenas para AVPlay)
+    // Atualiza barra de progresso (AVPlay)
     updateProgress() {
         if (this.overlay.style.display !== 'block' || this.useNativePlayer) return;
         
@@ -542,25 +583,18 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlayerModule;
 }
 
-
-
-// === FULLSCREEN BUTTON PATCH ===
+// Fullscreen patch
 (function(){
     if (typeof PlayerModule === 'undefined') return;
 
-    // add fullscreen methods only if not present
     if (!PlayerModule.toggleFullscreen) {
         PlayerModule.toggleFullscreen = function () {
             try {
                 const doc = document;
                 const el = PlayerModule.overlay || document.documentElement;
 
-                if (
-                    doc.fullscreenElement ||
-                    doc.webkitFullscreenElement ||
-                    doc.mozFullScreenElement ||
-                    doc.msFullscreenElement
-                ) {
+                if (doc.fullscreenElement || doc.webkitFullscreenElement || 
+                    doc.mozFullScreenElement || doc.msFullscreenElement) {
                     if (doc.exitFullscreen) doc.exitFullscreen();
                     else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
                     else if (doc.mozCancelFullScreen) doc.mozCancelFullScreen();
@@ -577,31 +611,5 @@ if (typeof module !== 'undefined' && module.exports) {
         };
     }
 
-    // inject button after overlay creation
-    const _origCreateOverlay = PlayerModule.createOverlay;
-    if (_origCreateOverlay && !_origCreateOverlay.__fullscreenPatched) {
-        PlayerModule.createOverlay = function () {
-            _origCreateOverlay.apply(this, arguments);
-
-            try {
-                const controls = this.overlay && this.overlay.querySelector('#controls');
-                if (!controls) return;
-
-                if (!controls.querySelector('#fullscreenBtn')) {
-                    const btn = document.createElement('button');
-                    btn.id = 'fullscreenBtn';
-                    btn.className = 'player-control';
-                    btn.textContent = '⛶ Tela cheia';
-                    btn.onclick = () => PlayerModule.toggleFullscreen();
-                    controls.insertBefore(btn, controls.lastElementChild);
-                }
-            } catch (e) {
-                console.warn('Fullscreen button inject failed:', e);
-            }
-        };
-        PlayerModule.createOverlay.__fullscreenPatched = true;
-    }
-
-    // ensure global exposure
     window.PlayerModule = PlayerModule;
 })();
