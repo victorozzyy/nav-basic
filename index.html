@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlayerTV</title>
+    <link rel="stylesheet" href="css/stylem3u8.css">
+</head>
+<body>
+    <h2>Player</h2>
+
+    <!-- Botões principais -->
+    <div class="section" style="display:flex; flex-wrap: wrap; gap: 10px;">
+	<!-- Botão que redireciona para xtream.html -->
+<button class="navigable" id="btnXtream" tabindex="0" 
+        onclick="window.location.href='xtream.html'">
+    ⚡ Xtream API
+</button>
+        <button class="navigable" id="btnMinhasListas" tabindex="0">🔥 Minhas Listas</button>
+        
+        
+    </div>
+
+  
+
+   
+
+   
+
+    <!-- Lista de canais -->
+    <div class="section">
+        <label>📺 Canais:</label>
+        <ul id="channelList"></ul>
+    </div>
+
+    <!-- Área de mensagens -->
+    <div id="messageArea"></div>
+
+    <!-- ORDEM CRÍTICA DE CARREGAMENTO -->
+    
+    <!-- 1. CONFIGURAÇÕES (primeiro) -->
+    <script src="js/playlist-config.js"></script>
+    <script src="js/local-playlist-loader.js"></script>
+    <script src="js/playlist-loader-local.js"></script>
+    
+    <!-- 2. MÓDULOS BASE -->
+    <script src="js/state.js"></script>
+    <script src="js/state-manager.js"></script>
+    <script src="js/documents-manager.js"></script>
+    
+    <!-- 3. MÓDULOS DE UI E FUNCIONALIDADE -->
+    <script src="js/favorites.js"></script>
+    <script src="js/channels.js"></script>
+    <script src="js/playlists-core.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/inline-player.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/search.js"></script>
+    
+  
+    
+    <!-- 4. INICIALIZAÇÃO (último) -->
+    <script src="js/app.js"></script>
+
+    <script>
+        // Log de verificação de carregamento
+        console.log('╔══════════════════════════════════════╗');
+        console.log('📦 VERIFICAÇÃO DE MÓDULOS CARREGADOS');
+        console.log('╚══════════════════════════════════════╝');
+        
+        const modules = {
+            'PlaylistConfig': typeof PlaylistConfig !== 'undefined',
+            'AppState': typeof AppState !== 'undefined',
+            'StateManager': typeof StateManager !== 'undefined',
+            'DocumentsManager': typeof DocumentsManager !== 'undefined',
+            'ChannelModule': typeof ChannelModule !== 'undefined',
+            'PlaylistModule': typeof PlaylistModule !== 'undefined',
+            'NavigationModule': typeof NavigationModule !== 'undefined',
+            'InlinePlayerModule': typeof InlinePlayerModule !== 'undefined',
+            'PlayerModule': typeof PlayerModule !== 'undefined',
+            'SearchModule': typeof SearchModule !== 'undefined',
+            'XtreamClient': typeof XtreamClient !== 'undefined',
+            'XtreamUI': typeof XtreamUI !== 'undefined'
+        };
+        
+        Object.entries(modules).forEach(([name, loaded]) => {
+            console.log(`${loaded ? '✅' : '❌'} ${name}`);
+        });
+        
+        const allLoaded = Object.values(modules).every(v => v);
+        console.log(allLoaded ? '✅ Todos os módulos carregados!' : '❌ Alguns módulos faltando!');
+        console.log('╚══════════════════════════════════════╝');
+    </script>
+</body>
+</html>
