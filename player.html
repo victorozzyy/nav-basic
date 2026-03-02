@@ -1,260 +1,538 @@
+<!-- player.html -->
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Player Web</title>
-  <style>
-    html, body { height: 100%; margin: 0; background: #000; }
-    #video { width: 100%; height: 100%; background: #000; display: block; }
-    #channelOverlay {
-      position: absolute; top: 10px; left: 0; right: 0;
-      text-align: center; color: #fff; font-size: 22px;
-      background: rgba(0,0,0,0.5); padding: 10px;
-      transition: opacity 0.5s ease;
-      opacity: 1;
-    }
-    #nextBtn {
-      margin-left: 20px; padding: 5px 10px;
-      background: #6bff6b; border: none; border-radius: 5px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <video id="video" controls autoplay playsinline></video>
-<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Player</title>
+<!-- Permite conteúdo mixed content onde possível -->
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 <style>
-  html,body{height:100%;margin:0;background:#000;color:#fff}
-  #video{width:100%;height:100%;background:#000;display:block}
-  #channelOverlay{position:absolute;left:0;right:0;top:8px;text-align:center;color:#fff}
-  #channelTitle{font-size:20px}
-  #nextBtn{position:absolute;right:16px;top:8px}
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+  }
+  #video {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: block;
+  }
+  #channelOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #fff;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);
+    padding: 12px 20px;
+    transition: opacity 0.5s ease;
+    opacity: 1;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+  }
+  #channelTitle {
+    font-size: 18px;
+    text-shadow: 0 1px 4px #000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+  }
+  #nextBtn {
+    padding: 6px 14px;
+    background: #0f0;
+    color: #000;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  #nextBtn:hover { background: #0c0; }
+  #clock {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    font-family: monospace;
+    font-size: 14px;
+    color: #aaa;
+    z-index: 10;
+  }
+  #errorOverlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9);
+    border: 1px solid #f00;
+    border-radius: 12px;
+    padding: 30px 40px;
+    text-align: center;
+    z-index: 20;
+    display: none;
+    max-width: 80%;
+  }
+  #errorOverlay h3 { color: #f44; margin: 0 0 10px; }
+  #errorOverlay p { color: #aaa; margin: 5px 0; font-size: 14px; }
+  #errorOverlay .retry-btn {
+    margin-top: 15px;
+    padding: 8px 20px;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  #errorOverlay .retry-btn:hover { background: #555; }
+  #proxyIndicator {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    font-size: 11px;
+    color: #555;
+    z-index: 10;
+  }
 </style>
 </head>
 <body>
   <video id="video" controls autoplay playsinline></video>
-  <div id="channelOverlay"><span id="channelTitle"></span><button id="nextBtn">⏭</button></div>
-  <span id="clock" style="position:absolute;right:12px;bottom:12px;font-family:monospace"></span>
-
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script>
-    (function(){
-      const params = new URLSearchParams(window.location.search);
-      const url = params.get("url") || "";
-      const name = params.get("name") || "";
-      const video = document.getElementById("video");
-      const titleEl = document.getElementById("channelTitle");
-      const nextBtn = document.getElementById("nextBtn");
-
-      function showOverlay(ms){ const o = document.getElementById("channelOverlay"); if(!o) return; o.style.opacity="1"; if(showOverlay._t) clearTimeout(showOverlay._t); if(ms>0) showOverlay._t = setTimeout(()=> o.style.opacity="0", ms); }
-
-      function loadChannelDirect(u, n){
-        titleEl.textContent = n || u;
-        showOverlay(3000);
-        if (!u) return;
-        if (u.toLowerCase().endsWith(".index")) {
-          if (window.Hls && Hls.isSupported()) {
-            if (window.hls) window.hls.destroy();
-            window.hls = new Hls();
-            window.hls.loadSource(u);
-            window.hls.attachMedia(video);
-          } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-            video.src = u;
-          }
-        } else {
-          video.src = u;
-        }
-        video.play().catch(err => console.warn("Autoplay:", err));
-      }
-
-      // init
-      loadChannelDirect(url, name);
-
-      // next button: just hides (no playlist)
-      nextBtn.addEventListener("click", () => { /* no-op: playlist-less player */ });
-
-      // close tab on Backspace / Escape / remote back key
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" || e.key === "Escape" || e.keyCode === 10009) {
-          e.preventDefault();
-          try { window.close(); } catch(err) { /* some browsers block close() for non-window.open tabs */ }
-        }
-      });
-
-      // simple clock
-      function updateClock(){ const now = new Date(); const h = String(now.getHours()).padStart(2,"0"); const m = String(now.getMinutes()).padStart(2,"0"); const s = String(now.getSeconds()).padStart(2,"0"); document.getElementById("clock").textContent = h+":"+m+":"+s; }
-      setInterval(updateClock,1000); updateClock();
-    })();
-  </script>
-</body>
-</html>
 
   <div id="channelOverlay">
     <span id="channelTitle"></span>
-    <button id="nextBtn">⏭ Próximo Canal</button>
+    <button id="nextBtn">⏭ Próximo</button>
   </div>
-<span id="channelTitle"></span>
-<button id="nextBtn">⏭ Próximo Canal</button>
-<span id="clock" style="float:right; margin-right:15px; font-family:monospace;"></span>
+
+  <div id="errorOverlay">
+    <h3>❌ Erro ao reproduzir</h3>
+    <p id="errorMsg">Não foi possível carregar o vídeo.</p>
+    <p id="errorUrl" style="font-size:11px;color:#444;word-break:break-all;"></p>
+    <button class="retry-btn" onclick="Player.retry()">🔄 Tentar Novamente</button>
+    <button class="retry-btn" onclick="Player.tryProxy()">🌐 Tentar via Proxy</button>
+    <button class="retry-btn" onclick="Player.close()">⬅️ Voltar</button>
+  </div>
+
+  <span id="clock"></span>
+  <span id="proxyIndicator"></span>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
-    const video = document.getElementById('video');
-    const overlay = document.getElementById('channelOverlay');
-    const titleEl = document.getElementById('channelTitle');
-    const nextBtn = document.getElementById('nextBtn');
+    /**
+     * Player v2.0 — Compatível com GitHub Pages (HTTPS)
+     * - Proxy automático para streams HTTP
+     * - Fallback HLS/MP4
+     * - Comunicação com overlay pai (XtreamApp)
+     */
+    const Player = {
+      // ═══════════════════════════════════════════════════════
+      // ESTADO
+      // ═══════════════════════════════════════════════════════
+      video: null,
+      currentUrl: '',
+      currentName: '',
+      currentIndex: 0,
+      playlist: [],
+      isOverlay: false,
+      hlsInstance: null,
+      proxyAttempt: 0,
 
-    const params = new URLSearchParams(window.location.search);
-    let index = parseInt(params.get("index") || "0");
+      // Proxies CORS para contornar Mixed Content no GitHub Pages
+      STREAM_PROXIES: [
+        '',  // tentativa direta primeiro (funciona se servidor aceitar HTTPS)
+        'https://corsproxy.io/?',
+        'https://api.allorigins.win/raw?url=',
+        'https://api.codetabs.com/v1/proxy?quest='
+      ],
 
-    function showOverlay(ms = 3000) {
-      overlay.style.opacity = "1";
-      if (showOverlay._t) clearTimeout(showOverlay._t);
-      if (ms > 0) {
-        showOverlay._t = setTimeout(() => overlay.style.opacity = "0", ms);
-      }
-    }
+      // ═══════════════════════════════════════════════════════
+      // INIT
+      // ═══════════════════════════════════════════════════════
+      init() {
+        this.video = document.getElementById('video');
+        const params = new URLSearchParams(window.location.search);
 
-    
-    function loadChannel(i) {
-      // Lê params da URL e tenta obter playlist compactada via `data` (base64 JSON)
-      const params_local = new URLSearchParams(window.location.search);
-      const dataParam = params_local.get("data");
-      let playlist = [];
-      try {
+        this.currentUrl   = params.get('url')  || '';
+        this.currentName  = params.get('name') || '';
+        this.currentIndex = parseInt(params.get('index') || '0', 10);
+        this.isOverlay    = params.get('origin') === 'overlay';
+
+        // Decodifica playlist inline se presente
+        const dataParam = params.get('data');
         if (dataParam) {
-          // decodeURIComponent + atob podem lançar se estiverem corrompidos
-          playlist = JSON.parse(atob(decodeURIComponent(dataParam)));
-          if (!Array.isArray(playlist)) playlist = [];
-        }
-      } catch (err) {
-        console.warn("⚠️ Falha ao decodificar playlist passada por URL:", err);
-        playlist = [];
-      }
-
-      // Determina canal a partir do índice (i) ou fallback para url/name individuais
-      let ch = null;
-      if (Array.isArray(playlist) && Number.isInteger(i) && i >= 0 && playlist[i] && playlist[i].url) {
-        ch = playlist[i];
-      } else {
-        const urlParam = params_local.get("url");
-        const nameParam = params_local.get("name");
-        if (urlParam) {
-          ch = { url: urlParam, name: nameParam || urlParam };
-        }
-      }
-
-      if (!ch || !ch.url) {
-        console.warn("Nenhum canal válido para carregar.");
-        return;
-      }
-
-      index = (Number.isInteger(i) && i >= 0) ? i : 0;
-      titleEl.textContent = ch.name || ch.url || ("Canal " + index);
-      showOverlay(3000);
-
-      try {
-        if (ch.url.toLowerCase().endsWith(".m3u8")) {
-          if (window.Hls && Hls.isSupported()) {
-            if (window.hls) window.hls.destroy();
-            window.hls = new Hls();
-            window.hls.loadSource(ch.url);
-            window.hls.attachMedia(video);
-          } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-            video.src = ch.url;
+          try {
+            this.playlist = JSON.parse(atob(decodeURIComponent(dataParam)));
+            if (!Array.isArray(this.playlist)) this.playlist = [];
+          } catch (e) {
+            console.warn('⚠️ Falha ao decodificar playlist:', e);
+            this.playlist = [];
           }
+        }
+
+        // Setup eventos
+        this.setupVideoEvents();
+        this.setupKeyboard();
+        this.setupOverlayCommunication();
+        this.startClock();
+
+        // Carrega canal
+        if (this.currentUrl) {
+          this.loadChannel(this.currentUrl, this.currentName);
+        } else if (this.playlist.length > this.currentIndex) {
+          const ch = this.playlist[this.currentIndex];
+          this.loadChannel(ch.url, ch.name);
+        }
+
+        // Botão próximo
+        document.getElementById('nextBtn').onclick = () => this.nextChannel();
+      },
+
+      // ═══════════════════════════════════════════════════════
+      // CARREGAR CANAL
+      // ═══════════════════════════════════════════════════════
+
+      /**
+       * Carrega um canal, tentando corrigir HTTP→HTTPS automaticamente
+       */
+      loadChannel(rawUrl, name) {
+        this.hideError();
+        this.proxyAttempt = 0;
+        this.currentUrl = rawUrl;
+        this.currentName = name || rawUrl;
+
+        document.getElementById('channelTitle').textContent = this.currentName;
+        this.showOverlay(4000);
+
+        // Corrige protocolo: se estamos em HTTPS e a URL é HTTP
+        let finalUrl = this.fixProtocol(rawUrl);
+
+        console.log(`▶️ Carregando: ${this.currentName}`);
+        console.log(`   URL original: ${rawUrl}`);
+        console.log(`   URL final:    ${finalUrl}`);
+
+        this.loadSource(finalUrl);
+      },
+
+      /**
+       * Corrige protocolo HTTP→HTTPS quando página é HTTPS
+       */
+      fixProtocol(streamUrl) {
+        if (!streamUrl) return streamUrl;
+
+        const pageIsHTTPS = window.location.protocol === 'https:';
+        const streamIsHTTP = streamUrl.startsWith('http://');
+
+        if (pageIsHTTPS && streamIsHTTP) {
+          // Tenta converter para HTTPS primeiro
+          const httpsUrl = streamUrl.replace('http://', 'https://');
+          console.log('🔒 Convertendo HTTP→HTTPS:', httpsUrl);
+          return httpsUrl;
+        }
+
+        return streamUrl;
+      },
+
+      /**
+       * Carrega a fonte no elemento video (HLS ou direto)
+       */
+      loadSource(url) {
+        // Limpa HLS anterior
+        if (this.hlsInstance) {
+          this.hlsInstance.destroy();
+          this.hlsInstance = null;
+        }
+
+        document.getElementById('proxyIndicator').textContent =
+          this.proxyAttempt > 0 ? `🌐 Proxy ${this.proxyAttempt}` : '';
+
+        const isHLS = /\.m3u8(\?|$)/i.test(url);
+
+        if (isHLS && window.Hls && Hls.isSupported()) {
+          // HLS.js
+          this.hlsInstance = new Hls({
+            xhrSetup: (xhr) => {
+              // Permite requisições cross-origin
+              xhr.withCredentials = false;
+            }
+          });
+
+          this.hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+              console.error('❌ HLS fatal:', data.type, data.details);
+              this.handleLoadError(data.details);
+            }
+          });
+
+          this.hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log('✅ HLS manifest carregado');
+            this.video.play().catch(e => this.handleAutoplayBlocked(e));
+          });
+
+          this.hlsInstance.loadSource(url);
+          this.hlsInstance.attachMedia(this.video);
+
+        } else if (isHLS && this.video.canPlayType('application/vnd.apple.mpegurl')) {
+          // Safari nativo
+          this.video.src = url;
+          this.video.play().catch(e => this.handleAutoplayBlocked(e));
+
         } else {
-          video.src = ch.url;
+          // MP4 / outros formatos diretos
+          this.video.src = url;
+          this.video.play().catch(e => this.handleAutoplayBlocked(e));
         }
-      } catch (err) {
-        console.warn("Erro ao configurar fonte do vídeo:", err);
-      }
+      },
 
-      // Autoplay: se foi aberto a partir da página de playlists (window.opener existe) ou referrer contém "m3u8"
-      try {
-        if (window.opener || (document.referrer && document.referrer.includes("m3u8"))) {
-          setTimeout(function(){ video.play().catch(function(err){ console.warn("⚠️ Autoplay bloqueado:", err); }); }, 300);
+      // ═══════════════════════════════════════════════════════
+      // TRATAMENTO DE ERROS
+      // ═══════════════════════════════════════════════════════
+
+      handleLoadError(details) {
+        console.warn(`⚠️ Erro de carregamento (proxy ${this.proxyAttempt}):`, details);
+
+        // Tenta próximo proxy automaticamente
+        if (this.proxyAttempt < this.STREAM_PROXIES.length - 1) {
+          this.proxyAttempt++;
+          const proxy = this.STREAM_PROXIES[this.proxyAttempt];
+          const proxiedUrl = proxy + encodeURIComponent(this.currentUrl);
+
+          console.log(`🔄 Tentando proxy ${this.proxyAttempt}:`, proxy);
+          this.loadSource(proxiedUrl);
         } else {
-          video.play().catch(function(err){ console.warn("⚠️ Autoplay bloqueado:", err); });
+          // Esgotou proxies — mostra erro
+          this.showError(`Não foi possível reproduzir o vídeo.\nServidor pode não suportar HTTPS.`);
         }
-      } catch (err) {
-        console.warn("Erro ao tentar reproduzir:", err);
-      }
-    }
+      },
 
+      handleAutoplayBlocked(err) {
+        console.warn('⚠️ Autoplay bloqueado:', err.message);
+        // Não é erro fatal — usuário pode clicar play manualmente
+      },
 
-    // Inicial
-    loadChannel(index);
+      showError(msg) {
+        const overlay = document.getElementById('errorOverlay');
+        document.getElementById('errorMsg').textContent = msg;
+        document.getElementById('errorUrl').textContent = this.currentUrl;
+        overlay.style.display = 'block';
+      },
 
-    // Botão próximo
-    nextBtn.onclick = () => loadChannel(index + 1);
+      hideError() {
+        document.getElementById('errorOverlay').style.display = 'none';
+      },
 
-    // Auto próximo ao fim (mp4)
-    
-    video.addEventListener("ended", function() {
-      try {
-        const params_ended = new URLSearchParams(window.location.search);
-        const dataParam_ended = params_ended.get("data");
-        let playlistEnded = [];
-        if (dataParam_ended) {
-          try { playlistEnded = JSON.parse(atob(decodeURIComponent(dataParam_ended))); } catch(e){ playlistEnded = []; }
+      retry() {
+        this.loadChannel(this.currentUrl, this.currentName);
+      },
+
+      tryProxy() {
+        this.proxyAttempt++;
+        if (this.proxyAttempt >= this.STREAM_PROXIES.length) this.proxyAttempt = 1;
+        const proxy = this.STREAM_PROXIES[this.proxyAttempt];
+        const proxiedUrl = proxy + encodeURIComponent(this.currentUrl);
+        this.hideError();
+        console.log(`🌐 Tentando proxy manual ${this.proxyAttempt}:`, proxy);
+        this.loadSource(proxiedUrl);
+      },
+
+      // ═══════════════════════════════════════════════════════
+      // NAVEGAÇÃO DE CANAIS
+      // ═══════════════════════════════════════════════════════
+
+      nextChannel() {
+        if (this.playlist.length > 0) {
+          this.currentIndex++;
+          if (this.currentIndex >= this.playlist.length) this.currentIndex = 0;
+          const ch = this.playlist[this.currentIndex];
+          this.loadChannel(ch.url, ch.name);
+        }
+      },
+
+      prevChannel() {
+        if (this.playlist.length > 0) {
+          this.currentIndex--;
+          if (this.currentIndex < 0) this.currentIndex = this.playlist.length - 1;
+          const ch = this.playlist[this.currentIndex];
+          this.loadChannel(ch.url, ch.name);
+        }
+      },
+
+      // ═══════════════════════════════════════════════════════
+      // EVENTOS DO VIDEO
+      // ═══════════════════════════════════════════════════════
+
+      setupVideoEvents() {
+        // Erro do elemento video
+        this.video.addEventListener('error', (e) => {
+          const err = this.video.error;
+          if (err) {
+            console.error('❌ Video error:', err.code, err.message);
+
+            // Se erro de rede ou decodificação, tenta proxy
+            if (err.code === MediaError.MEDIA_ERR_NETWORK ||
+                err.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+              this.handleLoadError('video-element-error');
+            }
+          }
+        });
+
+        // Auto-próximo ao fim do vídeo (MP4)
+        this.video.addEventListener('ended', () => {
+          if (this.playlist.length > 0 && this.currentIndex < this.playlist.length - 1) {
+            console.log('⏭ Vídeo terminou, próximo canal...');
+            this.nextChannel();
+          }
+        });
+
+        // Salvar posição no localStorage
+        this.video.addEventListener('timeupdate', () => {
+          if (!this.currentUrl || this.video.currentTime < 1) return;
+          try {
+            const key = this.currentIndex || this.currentUrl;
+            const allStates = JSON.parse(localStorage.getItem('playbackPositions') || '{}');
+            allStates[key] = this.video.currentTime;
+            localStorage.setItem('playbackPositions', JSON.stringify(allStates));
+          } catch (e) {}
+        });
+
+        // Restaurar posição
+        this.video.addEventListener('loadedmetadata', () => {
+          try {
+            const key = this.currentIndex || this.currentUrl;
+            const allStates = JSON.parse(localStorage.getItem('playbackPositions') || '{}');
+            if (allStates[key] && allStates[key] > 1) {
+              this.video.currentTime = allStates[key];
+              console.log(`⏪ Retomando do segundo ${allStates[key]}`);
+            }
+          } catch (e) {}
+        });
+
+        // Mostrar overlay em eventos de interação
+        this.video.addEventListener('pause', () => this.showOverlay(0));
+        document.addEventListener('mousemove', () => this.showOverlay(3000));
+      },
+
+      // ═══════════════════════════════════════════════════════
+      // TECLADO
+      // ═══════════════════════════════════════════════════════
+
+      setupKeyboard() {
+        document.addEventListener('keydown', (e) => {
+          const code = e.keyCode || e.which;
+
+          switch (true) {
+            // Voltar
+            case (e.key === 'Backspace' || e.key === 'Escape' || code === 10009 || code === 27):
+              e.preventDefault();
+              this.close();
+              break;
+
+            // Próximo canal
+            case (e.key === 'ArrowRight' || code === 39):
+              if (this.playlist.length > 0) {
+                e.preventDefault();
+                this.nextChannel();
+              }
+              break;
+
+            // Canal anterior
+            case (e.key === 'ArrowLeft' || code === 37):
+              if (this.playlist.length > 0) {
+                e.preventDefault();
+                this.prevChannel();
+              }
+              break;
+
+            // Play/Pause
+            case (e.key === ' ' || code === 32 || code === 415): // space or media play
+              e.preventDefault();
+              this.video.paused ? this.video.play() : this.video.pause();
+              break;
+
+            // Info
+            case (code === 457 || e.key === 'i' || e.key === 'I'):
+              this.showOverlay(5000);
+              break;
+          }
+        });
+      },
+
+      // ═══════════════════════════════════════════════════════
+      // COMUNICAÇÃO COM OVERLAY PAI (XtreamApp)
+      // ═══════════════════════════════════════════════════════
+
+      setupOverlayCommunication() {
+        if (!this.isOverlay) return;
+
+        // Solicita playlist ao pai
+        window.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'playlist-data') {
+            this.playlist = event.data.playlist || [];
+            this.currentIndex = event.data.currentIndex || 0;
+            console.log(`📥 Playlist recebida: ${this.playlist.length} itens`);
+          }
+        });
+
+        // Pede playlist ao pai
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'request-playlist' }, '*');
+        }
+      },
+
+      /**
+       * Fecha o player — envia mensagem ao pai ou navega
+       */
+      close() {
+        if (this.isOverlay && window.parent && window.parent !== window) {
+          // Modo overlay: avisa o pai para fechar
+          window.parent.postMessage({ type: 'close' }, '*');
         } else {
-          // fallback legacy (não confiável sem localStorage)
-          try { playlistEnded = JSON.parse(localStorage.getItem('savedPlaylistState') || '{}').urls || []; } catch(e){ playlistEnded = []; }
+          // Modo standalone: tenta fechar aba ou volta
+          try { window.close(); } catch (e) {}
+          // Fallback
+          window.location.href = 'xtream.html';
         }
+      },
 
-        if (playlistEnded && playlistEnded[index] && playlistEnded[index].url && playlistEnded[index].url.toLowerCase().endsWith(".mp4")) {
-          loadChannel(index + 1);
+      // ═══════════════════════════════════════════════════════
+      // UI HELPERS
+      // ═══════════════════════════════════════════════════════
+
+      showOverlay(ms) {
+        const overlay = document.getElementById('channelOverlay');
+        if (!overlay) return;
+        overlay.style.opacity = '1';
+
+        if (this._overlayTimer) clearTimeout(this._overlayTimer);
+        if (ms > 0) {
+          this._overlayTimer = setTimeout(() => overlay.style.opacity = '0', ms);
         }
-      } catch (err) {
-        console.warn('Erro no evento ended:', err);
+      },
+
+      startClock() {
+        const clockEl = document.getElementById('clock');
+        function update() {
+          const now = new Date();
+          clockEl.textContent =
+            String(now.getHours()).padStart(2, '0') + ':' +
+            String(now.getMinutes()).padStart(2, '0') + ':' +
+            String(now.getSeconds()).padStart(2, '0');
+        }
+        setInterval(update, 1000);
+        update();
       }
-    });
+    };
 
-
-    // Mostrar inicial e reaparecer em eventos
-    showOverlay(5000);
-    document.addEventListener("mousemove", () => showOverlay(3000));
-    video.addEventListener("pause", () => showOverlay(0));
-
-    // Tecla voltar
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" || e.key === "Escape" || e.keyCode === 10009) {
-        e.preventDefault();
-        location.href = "index.html?return=true";
-      }
-    });
-	// 🔥 Salvar posição no localStorage
-video.addEventListener("timeupdate", () => {
-  const allStates = JSON.parse(localStorage.getItem("playbackPositions") || "{}");
-  allStates[index || url] = video.currentTime; // usa índice se existir, senão a URL
-  localStorage.setItem("playbackPositions", JSON.stringify(allStates));
-});
-function updateClock() {
-  const now = new Date();
-  const h = now.getHours().toString().padStart(2, "0");
-  const m = now.getMinutes().toString().padStart(2, "0");
-  const s = now.getSeconds().toString().padStart(2, "0");
-  document.getElementById("clock").textContent = `${h}:${m}:${s}`;
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// 🔥 Restaurar posição ao carregar
-window.addEventListener("load", () => {
-  const allStates = JSON.parse(localStorage.getItem("playbackPositions") || "{}");
-  if (allStates[index || url]) {
-    video.currentTime = allStates[index || url];
-    console.log(`⏪ Retomando do segundo ${allStates[index || url]} para`, name);
-  }
-});
-
+    // Inicializa
+    document.addEventListener('DOMContentLoaded', () => Player.init());
   </script>
 </body>
 </html>
