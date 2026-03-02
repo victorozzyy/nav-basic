@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xtream API - Player</title>
+    <link rel="stylesheet" href="css/xtream.css">
+    <style>
+        #playlistScreen {
+            position: fixed; inset: 0;
+            background: #090909;
+            z-index: 99990;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            color: #fff;
+        }
+        #playlistScreen.hidden { display: none; }
+        #psBox {
+            width: min(800px, 92vw);
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #psHeader {
+            padding: 0 0 16px;
+            border-bottom: 1px solid #1e1e1e;
+            margin-bottom: 20px;
+        }
+        #psHeader h2 { margin: 0 0 8px; font-size: 26px; }
+        #psStatus { margin: 0; font-size: 14px; color: #555; }
+        #psList {
+            list-style: none; margin: 0; padding: 0;
+            overflow-y: auto;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .ps-item {
+            display: flex; align-items: center; gap: 18px;
+            padding: 20px 22px;
+            border-radius: 10px;
+            border: 2px solid #1c1c1c;
+            background: #111;
+            cursor: pointer;
+            transition: border-color .12s, background .12s;
+        }
+        .ps-item.focused {
+            border-color: #0f0;
+            background: #0d1a0d;
+            box-shadow: 0 0 0 3px rgba(0,255,0,.12);
+        }
+        .ps-num {
+            min-width: 42px; height: 42px; border-radius: 50%;
+            background: #1a1a1a; border: 2px solid #2a2a2a;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px; font-weight: bold; color: #0f0;
+            flex-shrink: 0; transition: background .12s, color .12s;
+        }
+        .ps-item.focused .ps-num { background: #0f0; color: #000; border-color: #0f0; }
+        .ps-info { flex: 1; min-width: 0; }
+        .ps-name {
+            font-size: 20px; font-weight: bold; color: #ddd;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ps-item.focused .ps-name { color: #fff; }
+        .ps-url {
+            font-size: 12px; color: #333; margin-top: 4px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ps-item.focused .ps-url { color: #2a5a2a; }
+        .ps-badge {
+            font-size: 11px; padding: 4px 10px; border-radius: 10px;
+            border: 1px solid #222; color: #444; flex-shrink: 0;
+        }
+        .ps-item.focused .ps-badge { border-color: #0a0; color: #0c0; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header id="header">
+        <h1>⚡ Xtream API</h1>
+        <div id="userStatus">🔄 Conectando...</div>
+    </header>
+
+    <!-- Menu Principal -->
+    <main id="mainMenu">
+        <ul id="menuList"></ul>
+    </main>
+
+    <!-- Tela de Categorias -->
+    <section id="categoryScreen" class="screen hidden">
+        <h2 id="categoryTitle">📂 Categorias</h2>
+        <ul id="categoryList" class="grid-list"></ul>
+    </section>
+
+    <!-- Tela de Séries -->
+    <section id="seriesScreen" class="screen hidden">
+        <h2 id="seriesTitle">📺 Séries</h2>
+        <ul id="seriesList" class="grid-list"></ul>
+    </section>
+
+    <!-- Tela de Canais/Filmes -->
+    <section id="channelScreen" class="screen hidden">
+        <h2 id="channelTitle">📺 Canais</h2>
+        <ul id="channelList" class="grid-list"></ul>
+    </section>
+
+    <!-- Tela de Favoritos -->
+    <section id="favoritesScreen" class="screen hidden">
+        <h2 id="favoritesTitle">⭐ Favoritos</h2>
+        <ul id="favoritesList" class="grid-list"></ul>
+    </section>
+
+    <!-- Tela de Continue Assistindo -->
+    <section id="continueScreen" class="screen hidden">
+        <h2 id="continueTitle">▶️ Continue Assistindo</h2>
+        <ul id="continueList" class="grid-list"></ul>
+    </section>
+
+    <!-- Tela de Seleção de Playlist (fixa no HTML) -->
+    <section id="playlistScreen">
+        <div id="psBox">
+            <div id="psHeader">
+                <h2>📋 Selecionar Lista</h2>
+                <p id="psStatus">🔄 Carregando...</p>
+            </div>
+            <ul id="psList"></ul>
+        </div>
+    </section>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden">
+        <div class="loading-content">
+            <span class="spinner">⏳</span>
+            <p id="loadingText">Carregando...</p>
+        </div>
+    </div>
+
+    <!-- Info Bar -->
+    <!-- Info Bar atualizada com ordenação -->
+<footer class="info-bar">
+    <span><span class="key">↑↓</span> Navegar</span>
+    <span><span class="key">←→</span> Pular linha</span>
+    <span><span class="key">CH±</span> <strong style="color:#00ff00;">Ordenação</strong></span>
+    <span><span class="key">OK</span> Selecionar</span>
+    <span><span class="key">BACK</span> Voltar</span>
+    <span><span class="key" style="background:#c00;">🔴</span> Início</span>
+    <span><span class="key" style="background:#0a0;">🟢</span> Fim</span>
+</footer>
+
+    <!-- Scripts -->
+    <script src="js/xtream-client.js"></script>
+    <script src="js/xtream-navigation.js"></script>
+    <script src="js/xtream-favorites.js"></script>
+    <script src="js/xtream-continue.js"></script>
+    <script src="js/xtream-app.js"></script>
+    <script src="js/xtream-playlist-selector.js"></script>
+</body>
+</html>
