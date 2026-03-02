@@ -11,19 +11,30 @@
 
     <!-- Botões principais -->
     <div class="section" style="display:flex; flex-wrap: wrap; gap: 10px;">
-      <button class="navigable" id="btnXtream" tabindex="0" 
+        <!-- Botão que redireciona para xtream.html -->
+<button class="navigable" id="btnXtream" tabindex="0" 
         onclick="window.location.href='xtream.html'">
     ⚡ Xtream API
 </button>
         <button class="navigable" id="btnMinhasListas" tabindex="0">🔥 Minhas Listas</button>
         <button class="navigable" id="btnLoadPlaylist" tabindex="0">📡 Playlists Remotas</button>
-        <!-- Botão que redireciona para xtream.html -->
-
+        <button class="navigable" id="btnLocal" tabindex="0">📁 Playlists Locais</button>
+        
     </div>
 
-   
+    <!-- Seletor de playlists remotas -->
+    <div class="section" id="remotePlaylistSelector" style="display:none; margin-top:10px;">
+        <h3>📡 Playlists Remotas Disponíveis:</h3>
+        <ul id="remotePlaylistList"></ul>
+        <button class="navigable" id="btnBackFromRemote" style="margin-top:10px;">⬅️ Voltar</button>
+    </div>
 
-    
+    <!-- Seletor de playlists locais -->
+    <div class="section" id="playlistSelector" style="display:none; margin-top:10px;">
+        <h3>📂 Playlists Locais:</h3>
+        <ul id="playlistList"></ul>
+        <button class="navigable" id="btnBackFromLocal" style="margin-top:10px;">⬅️ Voltar</button>
+    </div>
 
    
 
