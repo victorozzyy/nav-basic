@@ -6,6 +6,9 @@
     <title>Xtream API - Player</title>
     <link rel="stylesheet" href="css/xtream.css">
     <style>
+        /* ═══════════════════════════════════════════════════════
+           PLAYLIST SELECTOR
+           ═══════════════════════════════════════════════════════ */
         #playlistScreen {
             position: fixed; inset: 0;
             background: #090909;
@@ -73,6 +76,139 @@
             border: 1px solid #222; color: #444; flex-shrink: 0;
         }
         .ps-item.focused .ps-badge { border-color: #0a0; color: #0c0; }
+
+        /* ═══════════════════════════════════════════════════════
+           SEARCH BAR
+           ═══════════════════════════════════════════════════════ */
+        .search-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #111;
+            border: 2px solid #222;
+            border-radius: 10px;
+            margin: 0 0 16px 0;
+            transition: border-color 0.2s;
+        }
+        .search-container.focused,
+        .search-container:focus-within {
+            border-color: #0f0;
+            box-shadow: 0 0 0 3px rgba(0,255,0,.1);
+        }
+        .search-container .search-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            color: #666;
+        }
+        .search-container.focused .search-icon,
+        .search-container:focus-within .search-icon {
+            color: #0f0;
+        }
+        .search-container input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 18px;
+            font-family: inherit;
+            caret-color: #0f0;
+        }
+        .search-container input::placeholder {
+            color: #444;
+        }
+        .search-container .search-count {
+            font-size: 12px;
+            color: #555;
+            flex-shrink: 0;
+            min-width: 50px;
+            text-align: right;
+        }
+        .search-container .search-clear {
+            background: #222;
+            border: 1px solid #333;
+            color: #aaa;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            flex-shrink: 0;
+            display: none;
+        }
+        .search-container .search-clear.visible {
+            display: block;
+        }
+        .search-container .search-clear:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        /* Search result highlight */
+        .search-highlight {
+            background: rgba(0, 255, 0, 0.15);
+            color: #0f0;
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+
+        /* No results message */
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: #555;
+            font-size: 16px;
+        }
+        .no-results .no-results-icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 12px;
+        }
+        .no-results .no-results-query {
+            color: #888;
+            font-style: italic;
+        }
+
+        /* Search screen (global search from menu) */
+        #searchScreen {
+            padding: 30px 20px;
+        }
+        #searchScreen.hidden { display: none; }
+        #searchScreen .search-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        #searchScreen .search-header h2 {
+            margin: 0;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        #searchScreen .search-type-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        #searchScreen .search-tab {
+            padding: 8px 16px;
+            background: #1a1a1a;
+            border: 2px solid #222;
+            border-radius: 8px;
+            color: #888;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.15s;
+        }
+        #searchScreen .search-tab.active {
+            border-color: #0f0;
+            color: #0f0;
+            background: #0d1a0d;
+        }
+        #searchScreen .search-tab.focused {
+            border-color: #0f0;
+            box-shadow: 0 0 0 3px rgba(0,255,0,.12);
+        }
     </style>
 </head>
 <body>
@@ -87,21 +223,63 @@
         <ul id="menuList"></ul>
     </main>
 
+    <!-- Tela de Busca Global -->
+    <section id="searchScreen" class="screen hidden">
+        <div class="search-header">
+            <h2 id="searchTitle">🔍 Buscar</h2>
+        </div>
+        <div id="searchTypeTabs" class="search-type-tabs">
+            <div class="search-tab active" data-type="all">📋 Todos</div>
+            <div class="search-tab" data-type="live">📺 Ao Vivo</div>
+            <div class="search-tab" data-type="vod">🎬 Filmes</div>
+            <div class="search-tab" data-type="series">📺 Séries</div>
+        </div>
+        <div id="searchInputContainer" class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="globalSearchInput" placeholder="Digite para buscar..."
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <span class="search-count" id="globalSearchCount"></span>
+            <button class="search-clear" id="globalSearchClear">✕ Limpar</button>
+        </div>
+        <ul id="searchResultsList" class="grid-list"></ul>
+    </section>
+
     <!-- Tela de Categorias -->
     <section id="categoryScreen" class="screen hidden">
         <h2 id="categoryTitle">📂 Categorias</h2>
+        <div id="categorySearchContainer" class="search-container" style="margin:0 16px 16px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="categorySearchInput" placeholder="Filtrar categorias..."
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <span class="search-count" id="categorySearchCount"></span>
+            <button class="search-clear" id="categorySearchClear">✕ Limpar</button>
+        </div>
         <ul id="categoryList" class="grid-list"></ul>
     </section>
 
     <!-- Tela de Séries -->
     <section id="seriesScreen" class="screen hidden">
         <h2 id="seriesTitle">📺 Séries</h2>
+        <div id="seriesSearchContainer" class="search-container" style="margin:0 16px 16px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="seriesSearchInput" placeholder="Filtrar séries..."
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <span class="search-count" id="seriesSearchCount"></span>
+            <button class="search-clear" id="seriesSearchClear">✕ Limpar</button>
+        </div>
         <ul id="seriesList" class="grid-list"></ul>
     </section>
 
     <!-- Tela de Canais/Filmes -->
     <section id="channelScreen" class="screen hidden">
         <h2 id="channelTitle">📺 Canais</h2>
+        <div id="channelSearchContainer" class="search-container" style="margin:0 16px 16px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="channelSearchInput" placeholder="Filtrar canais..."
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <span class="search-count" id="channelSearchCount"></span>
+            <button class="search-clear" id="channelSearchClear">✕ Limpar</button>
+        </div>
         <ul id="channelList" class="grid-list"></ul>
     </section>
 
@@ -137,22 +315,22 @@
     </div>
 
     <!-- Info Bar -->
-    <!-- Info Bar atualizada com ordenação -->
-<footer class="info-bar">
-    <span><span class="key">↑↓</span> Navegar</span>
-    <span><span class="key">←→</span> Pular linha</span>
-    <span><span class="key">CH±</span> <strong style="color:#00ff00;">Ordenação</strong></span>
-    <span><span class="key">OK</span> Selecionar</span>
-    <span><span class="key">BACK</span> Voltar</span>
-    <span><span class="key" style="background:#c00;">🔴</span> Início</span>
-    <span><span class="key" style="background:#0a0;">🟢</span> Fim</span>
-</footer>
+    <footer class="info-bar">
+        <span><span class="key">↑↓</span> Navegar</span>
+        <span><span class="key">←→</span> Pular linha</span>
+        <span><span class="key">CH±</span> <strong style="color:#00ff00;">Ordenação</strong></span>
+        <span><span class="key">OK</span> Selecionar</span>
+        <span><span class="key">BACK</span> Voltar</span>
+        <span><span class="key" style="background:#c00;">🔴</span> Início</span>
+        <span><span class="key" style="background:#0a0;">🟢</span> Fim</span>
+    </footer>
 
     <!-- Scripts -->
     <script src="js/xtream-client.js"></script>
     <script src="js/xtream-navigation.js"></script>
     <script src="js/xtream-favorites.js"></script>
     <script src="js/xtream-continue.js"></script>
+    <script src="js/xtream-search.js"></script>
     <script src="js/xtream-app.js"></script>
     <script src="js/xtream-playlist-selector.js"></script>
 </body>
